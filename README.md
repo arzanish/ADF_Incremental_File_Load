@@ -1,33 +1,123 @@
-# ADF_Incremental_File_Load
-## Designed and deployed a scalable Incremental Data Ingestion pipeline using Azure Data Factory, enabling efficient processing of only new or updated files from Azure Data Lake Storage. Utilized Azure Synapse Analytics to persist and manage the last modified timestamp metadata, significantly improving performance, reducing data redundancy, and optimizing cloud resource utilization.
+# 🚀 ADF Incremental File Load Pipeline  
+### Scalable File-Based Data Ingestion using Azure Data Factory & Synapse Analytics
 
-## Pipeline Flow
-![Pipeline Architecture](1-Master.png)
+---
 
-The Pipeline has the following variables : 
-![Pipeline Architecture](Pipeline_var.png)
+## 📌 Overview
 
-### Activities : 
-1. **Get last_timestamp (LOOKUP ACTIVITY) :** This LookUp Activity will Query the Table  dbo.lastModified  and get the Timestamp of the Last File that was modified.
-2. **SET Var-lastmodified (SET VARIABLE ACTIVITY) :**  This will set the Pipeline Variable  last_timetamp  with the output of the LOOKUP ACTIVITY .
-3. **Source MetaData (GET METADATA) :** This Activity will fetch the details of the Files in the SOURCE FOLDER where the Files are sent over. From this Folder we need to incrementally load the files onto the Destination Folder
-4. **Loop Items (FOREACH) :** The Previous Activity will send over an array of the CHILD ITEMS of the SOURCE FOLDER.
-5. **Stored Procedure 1 (STORED PROCEDURE) :** This Activity will allow us to run the below Stored Procedure on **Azure Synapse**. This will update the table with the timestamp of the Latest File.
+This project demonstrates an automated **Incremental File Load pipeline** built using **Azure Data Factory (ADF)**.  
+It processes **only new or updated files** from **Azure Data Lake Storage (ADLS)** and utilizes **Azure Synapse Analytics** to store and manage metadata related to ingestion timestamps.
 
-    Parameters of stored procedure : _NewIngestiontime=max_timestamp ; OldIngestionTime=last_timestamp_
-   
-   ![Pipeline Architecture](Stored_Procedure.png)
+> ✅ **Key Benefits**  
+- Prevents data duplication  
+- Enhances performance with metadata-driven control  
+- Reduces cloud resource usage and costs
 
+---
 
-Now within the **FOREACH ACTIVITY (Loop Items)** , the below Activities are there:
-![Pipeline Architecture](2-Loop-Items-CHILD_PL.png)
-1. **File Metadata (GETMETADATA ACTIVITY) :** This will return the _Last Modified time_ of the _ITEM_ which was provided as an input from the _PARENT ACTIVITY_ **Loop Items**
-2. **If Condition1 (IF CONDITION ACTIVITY) :** If the timestamp of the _ITEM_ is greater then value stored in the variable _last_timestamp_ then the **TRUE** condition will be activated and the set of activities within it will run (these will copy the FILE from SOURCE to DESTINATION folder and update the variable _temp_max_timestamp_).
-3. **Update max timestamp (SET VARIABLE ACTIVITY):** This will update the variable _max_timestamp_ with the value of _temp_max_timestamp_ .
+## 🏗️ Architecture Flow
 
-Now, Within the **If Condition1 (IF CONDITION ACTIVITY)** , the below Activities are there:
+### 📍 High-Level Pipeline Design  
+> The pipeline follows a control flow that ensures only updated files since the last run are ingested.
 
-![Pipeline Architecture](3-If_Condition_1-CHILD.png)
+![ADF Main Pipeline](1-Master.png)
 
-1. **Copy data1 (COPY DATA ACTIVITY) :** This will copy the file from SOURCE to DESTINATION folder that has newly arrived since the last Pipeline Run.
-2. **Set intermediate max(SET VARIABLE ACTIVITY) :** This will update the value of the variable _temp_max_timestamp_ with the last modified timestamp of the File .
+---
+
+## 📦 Variables Used in Pipeline  
+The following string variables are configured for tracking timestamps during execution:
+
+![Pipeline Variables](Pipeline_var.png)
+
+| Variable Name       | Description                                  | Default Value              |
+|---------------------|----------------------------------------------|----------------------------|
+| `last_timestamp`    | Timestamp from the last ingestion            | (dynamic via Lookup)       |
+| `max_timestamp`     | Latest timestamp during current run          | `2000-12-12T12:12:12Z`     |
+| `temp_max_timestamp`| Intermediate timestamp per file              | `2000-12-12T12:12:12Z`     |
+
+---
+
+## 🔄 Pipeline Activities Breakdown
+
+1. **Lookup Activity** – `Get last_timestamp`  
+   Retrieves the most recent ingestion timestamp from Synapse table `dbo.lastModified`.
+
+2. **Set Variable** – `SET VAR - last_timestamp`  
+   Stores the output of the lookup into a pipeline variable.
+
+3. **Get Metadata** – `Source Metadata`  
+   Scans the source folder in ADLS to retrieve list of files and their metadata.
+
+4. **ForEach Activity** – `Loop Items`  
+   Iterates over the retrieved list of files.
+
+5. **Stored Procedure** – `Stored Procedure1`  
+   Updates the Synapse metadata table with the latest processed timestamp.
+
+---
+
+## 🧠 Stored Procedure Definition  
+Used to update ingestion tracking metadata in Synapse:
+
+![Stored Procedure Script](Stored_Procedure.png)
+
+```sql
+CREATE PROCEDURE UpdateIngestionTime  
+    @OldIngestionTime DATETIME,  
+    @NewIngestionTime DATETIME  
+AS  
+BEGIN  
+    UPDATE lastModified  
+    SET last_timestamp = @NewIngestionTime  
+    WHERE last_timestamp = @OldIngestionTime;  
+END;
+````
+
+---
+
+## 🔁 Loop Logic: Per-File Evaluation
+
+### Inside `Loop Items` Activity
+
+![Loop Items Activities](2-Loop-Items-CHILD_PL.png)
+
+| Activity         | Description                                         |
+| ---------------- | --------------------------------------------------- |
+| **Get Metadata** | Fetches last modified timestamp of each file        |
+| **If Condition** | Checks if the file is newer than `last_timestamp`   |
+| **Set Variable** | Updates `max_timestamp` if newer timestamp is found |
+
+---
+
+### Inside `If Condition1` (True Branch)
+
+![If Condition Activities](3-If_Condition_1-CHILD.png)
+
+| Activity                 | Description                                     |
+| ------------------------ | ----------------------------------------------- |
+| **Copy Data**            | Copies new/updated file to destination location |
+| **Set Intermediate Max** | Captures file timestamp for comparison          |
+
+---
+
+## 🧾 Summary
+
+* 📁 **Source**: Azure Data Lake Gen2
+* 📌 **Control Layer**: Azure Data Factory
+* 🗂️ **Metadata Store**: Azure Synapse Analytics
+* 🔁 **Logic**: Compare file timestamps and load only delta
+* 💡 **Best Practices**: Modular design, variable-driven logic, optimized for cost and performance
+
+---
+
+## 📬 Contact
+
+For any queries or suggestions, feel free to reach out via [LinkedIn](https://www.linkedin.com/in/arzanish-yusuf-nadeem/)
+
+---
+
+> 💡 *This repository showcases practical cloud-native data engineering techniques for incremental ingestion pipelines.*
+
+```
+
+---
