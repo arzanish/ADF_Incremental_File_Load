@@ -112,7 +112,7 @@ END;
 
 ## 📬 Contact
 
-For any queries or suggestions, feel free to reach out via [LinkedIn](https://www.linkedin.com/in/arzanish-yusuf-nadeem/)
+For any queries or suggestions, feel free to reach out via [LinkedIn](https://www.linkedin.com/in/arzanish-yusuf-nadeem-ab279417b/)
 
 ---
 
